@@ -117,7 +117,7 @@ def get_costMap(model, n_theta = 25, n_dtheta = 25, n_u = 25):
     theta_upper = m.pi
     dtheta_lower = -8
     dtheta_upper = 8
-    u_lower = 0
+    u_lower = -2
     u_upper = 2
 
     theta_space = np.linspace(theta_lower,theta_upper,n_theta)
@@ -136,7 +136,7 @@ def get_costMap(model, n_theta = 25, n_dtheta = 25, n_u = 25):
                 predict_state = model.predict(sa0.reshape(-1,len(sa0)))
                 # heuristic
                 h = -(predict_state[0][2]**2 + predict_state[0][3]**2 + 0.001*action**2)
-                g = -predict_state[0][2]
+                g = -abs(predict_state[0][2])
                 cost[t,dt,a] = h + g
                 a += 1
             dt += 1
@@ -156,6 +156,11 @@ def simulation(model,games=1,steps=1000):
             t = np.where(theta_space>=theta) 
             dt = np.where(dtheta_space>=dtheta)
             a = cost[t[0][0],dt[0][0],:].argmax()
+            # if abs(theta) >= 0.5*m.pi:
+            #     d = -dtheta
+            # else:
+            #     d = dtheta
+            # g = np.array(m.copysign(1,d))
             action = [action_space[a]]
             print(action)
             observation, reward, done, info = env.step(action)
