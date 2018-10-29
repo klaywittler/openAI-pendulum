@@ -32,6 +32,8 @@ def get_trainingData(episodes=20,goal_steps=100):
             s1 = np.array([observation[0], observation[1], m.acos(observation[0]), observation[2]])
             training_data = np.vstack((training_data,np.hstack((sa0,s1))))
             s0 = s1
+            # if done:
+            #     break
                 
     env.close()
     training_data = np.delete(training_data,0,axis=0)
@@ -66,6 +68,8 @@ def get_testingData(model,test_games=5,test_steps=100):
             testing_predict = np.vstack((testing_actual,s1))
             testing_predict = np.vstack((testing_predict,predict_state))
             s0 = s1
+            # if done:
+            #     break
 
     env.close()
     testing_predict = np.delete(testing_predict,0,axis=0)
@@ -132,6 +136,7 @@ def get_costMap(model, n_theta = 25, n_dtheta = 25, n_u = 25):
                 predict_state = model.predict(sa0.reshape(-1,len(sa0)))
                 # heuristic
                 h = -(predict_state[0][2]**2 + predict_state[0][3]**2 + 0.001*action**2)
+
                 cost[t,dt,a] = h
                 a += 1
             dt += 1
@@ -140,24 +145,27 @@ def get_costMap(model, n_theta = 25, n_dtheta = 25, n_u = 25):
     return [cost, theta_space, dtheta_space, action_space]
 
 
-def simulation(model):
+def simulation(model,games=1,steps=1000):
     [cost, theta_space, dtheta_space, action_space] = get_costMap(model)
-    for i_episode in range(5):
+    for i_episode in range(games):
         observation = env.reset()
-        for t in range(500):
+        for t in range(steps):
             env.render()
             theta = m.acos(observation[0]) 
             dtheta = observation[2]
             t = np.where(theta_space>=theta) 
             dt = np.where(dtheta_space>=dtheta)
             a = cost[t[0][0],dt[0][0],:].argmax()
-            if abs(theta) >= 0.5*m.pi:
+            if abs(theta) >= 0.75*m.pi:
                 d = -dtheta
             else:
-                d = theta
-            action = np.array(m.copysign(1.0,d))*[action_space[a]]
+                d = dtheta
+            g = np.array(m.copysign(1,d))
+            action = g*[action_space[a]]
             print(action)
             observation, reward, done, info = env.step(action)
+            # if done:
+            #     break
                     
     env.close()
 
@@ -193,6 +201,6 @@ model.load('pendulum1.tflearn')
 # training_error = y - training_predict
 # testing_error = testing_data[1] - testing_data[0]
 
-simulation(model)
+simulation(model,games=1,steps=1000)
 
 
