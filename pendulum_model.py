@@ -12,7 +12,7 @@ env = gym.make('Pendulum-v0')
 # initialization variables
 LR = 1e-3 # learning rate
 goal_steps = 500 # how long each game runs
-initial_games = 500 # how many games
+initial_games = 1000 # how many games
 test_games = 5 # how test games
 test_steps = 500 # how long each test game runs
 
@@ -32,9 +32,6 @@ def get_trainingData(episodes=20,goal_steps=100):
             s1 = np.array([observation[0], observation[1], m.acos(observation[0]), observation[2]])
             training_data = np.vstack((training_data,np.hstack((sa0,s1))))
             s0 = s1
-            if done:
-                # print("Episode finished after {} timesteps".format(t+1))
-                break
                 
     env.close()
     training_data = np.delete(training_data,0,axis=0)
@@ -69,9 +66,7 @@ def get_testingData(model,test_games=5,test_steps=100):
             testing_predict = np.vstack((testing_actual,s1))
             testing_predict = np.vstack((testing_predict,predict_state))
             s0 = s1
-            if done:
-                # print("Episode finished after {} timesteps".format(t+1))
-                break
+
     env.close()
     testing_predict = np.delete(testing_predict,0,axis=0)
     return [testing_predict, testing_actual]
@@ -109,7 +104,7 @@ def train_model(training_data, model=False):
     if not model:
         model = neural_network_model(input_size = len(X[0,:]))
     
-    model.fit({'input': X}, {'targets': y}, n_epoch=3, snapshot_step=500, show_metric=True, run_id='openai_learning1')
+    model.fit({'input': X}, {'targets': y}, n_epoch=3, snapshot_step=500, show_metric=True, run_id='openai_learning')
     return model
 
 
@@ -149,19 +144,20 @@ def simulation(model):
     [cost, theta_space, dtheta_space, action_space] = get_costMap(model)
     for i_episode in range(5):
         observation = env.reset()
-        for t in range(10000):
+        for t in range(500):
             env.render()
             theta = m.acos(observation[0]) 
             dtheta = observation[2]
             t = np.where(theta_space>=theta) 
             dt = np.where(dtheta_space>=dtheta)
             a = cost[t[0][0],dt[0][0],:].argmax()
-            action = [action_space[a]]
+            if abs(theta) >= 0.5*m.pi:
+                d = -dtheta
+            else:
+                d = theta
+            action = np.array(m.copysign(1.0,d))*[action_space[a]]
+            print(action)
             observation, reward, done, info = env.step(action)
-            
-            if done:
-                # print("Episode finished after {} timesteps".format(t+1))
-                break
                     
     env.close()
 
@@ -176,12 +172,12 @@ X = training_data[:,0:5]
 y = training_data[:,5:9]
 
 # uncomment this to retrain model
-model = train_model(training_data)
-model.save('pendulum1.tflearn')
+# model = train_model(training_data)
+# model.save('pendulum.tflearn')
 
 # loading previously saved model
-# model = neural_network_model(len(X[0,:]))
-# model.load('pendulum.tflearn')
+model = neural_network_model(len(X[0,:]))
+model.load('pendulum1.tflearn')
 
 # uncomment this and comment below to recalculate
 # training_predict = get_trainingPrediction(training_data,model)
